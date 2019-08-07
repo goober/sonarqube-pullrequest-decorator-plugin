@@ -1,0 +1,51 @@
+plugins {
+    id 'com.github.johnrengelman.shadow' version '5.1.0'
+    id 'java'
+}
+
+group 'com.github.goober.sonarqube.plugin'
+
+repositories {
+    mavenCentral()
+    jcenter()
+}
+
+def sonarqubeVersion = '7.8'
+def jacksonVersion = '2.9.9'
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+targetCompatibility = JavaVersion.VERSION_1_8
+
+dependencies {
+    compile 'com.squareup.okhttp3:okhttp:4.0.1'
+    compile "com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}"
+    compile "com.fasterxml.jackson.core:jackson-core:${jacksonVersion}"
+    compile "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+    compileOnly "org.sonarsource.sonarqube:sonar-plugin-api:${sonarqubeVersion}"
+
+    compileOnly 'org.projectlombok:lombok:1.18.8'
+    annotationProcessor 'org.projectlombok:lombok:1.18.8'
+}
+
+assemble.dependsOn(
+  shadowJar {
+    archiveClassifier = null
+  }
+)
+
+jar {
+    manifest {
+        attributes 'Plugin-Description': 'Decorates pull requests with SonarQube analysis report',
+          'SonarLint-Supported': false,
+          'Plugin-Homepage': 'https://github.com/goober/sonarqube-pull-request-decorator-plugin',
+          'Plugin-License': 'Apache License 2.0',
+          'Plugin-Version': "${project.version}",
+          'Plugin-Organization': 'Mathias Åhsberg',
+          'Sonar-Version': "${sonarqubeVersion}",
+          'Plugin-IssueTrackerUrl': 'https://github.com/goober/sonarqube-pull-request-decorator-plugin/issues',
+          'Plugin-Key': 'pullRequestDecoratorPlugin',
+          'Plugin-Class': 'com.github.goober.sonarqube.plugin.PullRequestDecoratorPlugin',
+          'Plugin-Name': 'Pull Request Decorator Plugin'
+    }
+}
+
