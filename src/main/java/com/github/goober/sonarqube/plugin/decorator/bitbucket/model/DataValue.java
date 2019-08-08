@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
 
+import java.math.BigDecimal;
+
 public abstract class DataValue {
 
     @Value
@@ -29,6 +31,6 @@ public abstract class DataValue {
     @EqualsAndHashCode(callSuper = false)
     public static class Percentage extends DataValue {
         @JsonValue
-        Double value; //TODO use a more proper type
+        BigDecimal value;
     }
 }

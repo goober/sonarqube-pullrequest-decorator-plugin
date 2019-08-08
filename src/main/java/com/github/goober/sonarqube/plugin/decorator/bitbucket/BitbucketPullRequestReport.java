@@ -16,6 +16,7 @@ import org.sonar.api.ce.posttask.Branch;
 import org.sonar.api.ce.posttask.PostProjectAnalysisTask;
 import org.sonar.api.ce.posttask.QualityGate;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -98,42 +99,55 @@ class BitbucketPullRequestReport {
             reportData.addAll(Arrays.asList(
                     ReportData.builder()
                             .title("Bugs")
-                            .value(new DataValue.Text(measures.get("new_bugs").firstValue().orElse("0")))
+                            .value(new DataValue.Text(Optional.ofNullable(measures.get("new_bugs"))
+                                    .flatMap(Measure::firstValue)
+                                    .orElse("-")))
                             .build(),
                     ReportData.builder()
                             .title("Code Coverage")
-                            .value(new DataValue.Percentage(measures.get("new_coverage").firstValue()
-                                    .map(Double::parseDouble)
-                                    .orElse(0d)))
+                            .value(Optional.ofNullable(measures.get("new_coverage"))
+                                    .flatMap(Measure::firstValue)
+                                    .map(BigDecimal::new)
+                                    .map(DataValue.Percentage::new)
+                                    .map(DataValue.class::cast)
+                                    .orElseGet(() -> new DataValue.Text("-"))
+                            )
                             .build(),
                     ReportData.builder()
                             .title("Vulnerabilities")
-                            .value(new DataValue.Text(measures.get("new_vulnerabilities").firstValue().orElse("0")))
+                            .value(new DataValue.Text(Optional.ofNullable(measures.get("new_vulnerabilities"))
+                                    .flatMap(Measure::firstValue)
+                                    .orElse("-")))
                             .build(),
                     ReportData.builder()
                             .title("Duplication")
-                            .value(new DataValue.Percentage(measures.get("new_duplicated_lines_density").firstValue()
-                                    .map(Double::parseDouble)
-                                    .orElse(0d)))
+                            .value(Optional.ofNullable(measures.get("new_duplicated_lines_density"))
+                                    .flatMap(Measure::firstValue)
+                                    .map(BigDecimal::new)
+                                    .map(DataValue.Percentage::new)
+                                    .map(DataValue.class::cast)
+                                    .orElseGet(() -> new DataValue.Text("-")))
                             .build(),
                     ReportData.builder()
                             .title("Code Smells")
-                            .value(new DataValue.Text(measures.get("new_code_smells").firstValue().orElse("0")))
+                            .value(new DataValue.Text(Optional.ofNullable(measures.get("new_code_smells"))
+                                    .flatMap(Measure::firstValue)
+                                    .orElse("-")))
                             .build()
             ));
         }
         reportData.add(ReportData.builder()
-                        .title("Details")
-                        .value(DataValue.Link.builder().linktext("Go to SonarQube")
-                                .href(response.getDashboardUrl())
-                                .build())
-                        .build());
+                .title("Details")
+                .value(DataValue.Link.builder()
+                        .linktext("Go to SonarQube")
+                        .href(response.getDashboardUrl())
+                        .build())
+                .build());
         this.data = reportData;
         return this;
     }
 
-
-    public CreateReportRequest toCreateReportRequest() {
+    CreateReportRequest toCreateReportRequest() {
         return CreateReportRequest.builder()
                 .title("SonarQube")
                 .vendor("SonarQube")
@@ -180,7 +194,6 @@ class BitbucketPullRequestReport {
     }
 
     private String toBitbucketType(String sonarqubeType) {
-        System.out.println(sonarqubeType);
         switch (sonarqubeType) {
             case "SECURITY_HOTSPOT":
             case "VULNERABILITY":
