@@ -2,9 +2,9 @@
 A plugin for [SonarQube](https://sonarqube.org) to allow pull request decorations in the Community Edition.
 
 **NOTE** This plugin is still a work in progress and should only be used for evaluation at this stage.
-There is an [open discussion](https://github.com/mc1arke/sonarqube-community-branch-plugin/issues/27) on how to add 
+There is an [open discussion](https://github.com/mc1arke/sonarqube-community-branch-plugin/issues/27) on whether to add 
 support for pull request decorations directly in the `sonarqube-community-branch-plugin`. 
-There is a possibility that the features of this plugin gets pulled into that repository, depending on how the 
+There is a possibility that the features of this plugin get pulled into that repository, depending on how the 
 discussion moves forward. 
 
 ## Compatibility
@@ -23,9 +23,9 @@ The plugin aims to support the
 ### Bitbucket Server
 The following properties is required to be set to enable the plugin for Bitbucket Server, 
 and can be set either in `conf/sonar.properties` or through the user interface under 
-**Administration > General Settings > Pull Requests > Integration with Bitbucket Server**
+Administration > General Settings > Pull Requests > **Integration with Bitbucket Server**
 
 | Property                               | Description                                                             |
 | -------------------------------------- | ----------------------------------------------------------------------- |
 | `sonar.pullrequest.bitbucket.endpoint` | The server endpoint. e.g `https://bitbucket.company.com`                |
-| `sonar.pullrequest.bitbucket.token`    | The Personal Access Token to authenticate with the Bitbucket Server API |
+| `sonar.pullrequest.bitbucket.token`    | [The Personal Access Token](https://confluence.atlassian.com/bitbucketserver/personal-access-tokens-939515499.html) to authenticate with the Bitbucket Server API |
