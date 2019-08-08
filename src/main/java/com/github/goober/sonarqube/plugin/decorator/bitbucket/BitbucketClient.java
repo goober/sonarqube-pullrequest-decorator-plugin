@@ -23,7 +23,7 @@ import static java.lang.String.format;
 @ComputeEngineSide
 public class BitbucketClient {
     private static final Logger LOGGER = Loggers.get(BitbucketClient.class);
-
+    private static final String REPORT_KEY = "com.github.goober.sonarqube.plugin.decorator";
     private final Configuration configuration;
 
     private OkHttpClient client;
@@ -42,7 +42,7 @@ public class BitbucketClient {
         String body = getObjectMapper().writeValueAsString(request);
         Request req = new Request.Builder()
                 .put(RequestBody.create(body, MediaType.parse("application/json")))
-                .url(format("%s/rest/insights/1.0/projects/%s/repos/%s/commits/%s/reports/com.foobar", baseUrl(), project, repository, commit))
+                .url(format("%s/rest/insights/1.0/projects/%s/repos/%s/commits/%s/reports/%s", baseUrl(), project, repository, commit, REPORT_KEY))
                 .build();
 
         try (Response response = getClient().newCall(req).execute()) {
@@ -51,9 +51,12 @@ public class BitbucketClient {
     }
 
     void createAnnotations(String project, String repository, String commit, CreateAnnotationsRequest request) throws IOException {
+        if (request.getAnnotations().isEmpty()) {
+            return;
+        }
         Request req = new Request.Builder()
                 .post(RequestBody.create(getObjectMapper().writeValueAsString(request), MediaType.parse("application/json")))
-                .url(format("%s/rest/insights/1.0/projects/%s/repos/%s/commits/%s/reports/com.foobar/annotations", baseUrl(), project, repository, commit))
+                .url(format("%s/rest/insights/1.0/projects/%s/repos/%s/commits/%s/reports/%s/annotations", baseUrl(), project, repository, commit, REPORT_KEY))
                 .build();
         try (Response response = getClient().newCall(req).execute()) {
             validate(response);
@@ -63,7 +66,7 @@ public class BitbucketClient {
     void deleteAnnotations(String project, String repository, String commit) throws IOException {
         Request req = new Request.Builder()
                 .delete()
-                .url(format("%s/rest/insights/1.0/projects/%s/repos/%s/commits/%s/reports/com.foobar/annotations", baseUrl(), project, repository, commit))
+                .url(format("%s/rest/insights/1.0/projects/%s/repos/%s/commits/%s/reports/%s/annotations", baseUrl(), project, repository, commit, REPORT_KEY))
                 .build();
         try (Response response = getClient().newCall(req).execute()) {
             validate(response);
@@ -71,7 +74,7 @@ public class BitbucketClient {
     }
 
     private void validate(Response response) throws IOException {
-        if(!response.isSuccessful()) {
+        if (!response.isSuccessful()) {
             LOGGER.error("{} - {}", response.code(), response.body() == null ? "" : response.body().string());
             throw new IOException(format("Bitbucket responded with an unsuccessful response %d", response.code()));
         }
