@@ -7,7 +7,7 @@ import java.util.Set;
 
 @Value
 @Builder
-public class SearchResponse {
+public class SearchIssuesResponse {
 
     Integer total;
     Integer p;

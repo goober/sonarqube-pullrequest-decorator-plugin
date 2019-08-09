@@ -2,25 +2,23 @@ package com.github.goober.sonarqube.plugin.decorator.bitbucket;
 
 import com.github.goober.sonarqube.plugin.decorator.PullRequestDecorator;
 import com.github.goober.sonarqube.plugin.decorator.bitbucket.model.CreateAnnotationsRequest;
-import com.github.goober.sonarqube.plugin.decorator.sonarqube.SonarQubeClient;
 import com.github.goober.sonarqube.plugin.decorator.bitbucket.model.ServerProperties;
+import com.github.goober.sonarqube.plugin.decorator.sonarqube.PullRequestReportCollector;
+import lombok.RequiredArgsConstructor;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 
 import java.io.IOException;
 
 import static java.lang.String.format;
+
+@RequiredArgsConstructor
 public class BitbucketPullRequestDecorator implements PullRequestDecorator {
 
     private static final Logger LOGGER = Loggers.get(BitbucketPullRequestDecorator.class);
 
-    private final SonarQubeClient sonarqubeClient;
+    private final PullRequestReportCollector reportCollector;
     private final BitbucketClient bitbucketClient;
-
-    public BitbucketPullRequestDecorator(SonarQubeClient sonarqubeClient, BitbucketClient bitbucketClient) {
-        this.sonarqubeClient = sonarqubeClient;
-        this.bitbucketClient = bitbucketClient;
-    }
 
     @Override
     public boolean isActivated() {
@@ -29,17 +27,8 @@ public class BitbucketPullRequestDecorator implements PullRequestDecorator {
 
     @Override
     public void decorate(ProjectAnalysis analysis) {
-        BitbucketPullRequestReport report = new BitbucketPullRequestReport(analysis);
         try {
-
-            report.setReportDetails(sonarqubeClient.listMetrics().getMetrics())
-                    .setReportData(sonarqubeClient.listMeasures(analysis.getProject().getKey(), report.getPullRequestId(),
-                            "new_code_smells",
-                            "new_bugs",
-                            "new_vulnerabilities",
-                            "new_coverage",
-                            "new_duplicated_lines_density"))
-                    .setAnnotations(sonarqubeClient.listOpenIssues(analysis.getProject().getKey(), report.getPullRequestId()).getIssues());
+            BitbucketPullRequestReport report = new BitbucketPullRequestReport(reportCollector.collect(analysis));
 
             bitbucketClient.createReport(report.getProject(),
                     report.getRepository(),
@@ -57,7 +46,10 @@ public class BitbucketPullRequestDecorator implements PullRequestDecorator {
                             .build());
 
         } catch (IOException e) {
-            LOGGER.error("Could not decorate pull request {}, in project {}", report.getPullRequestId(), analysis.getProject().getKey(), e);
+            LOGGER.error("Could not decorate pull request for project {}", analysis.getProject().getKey(), e);
+        }
+    }
+
     private boolean hasApiSupport() {
         try {
             ServerProperties server = bitbucketClient.getServerProperties();

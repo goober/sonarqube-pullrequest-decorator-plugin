@@ -1,111 +1,78 @@
 package com.github.goober.sonarqube.plugin.decorator.bitbucket;
 
-import com.github.goober.sonarqube.plugin.decorator.PullRequestProperties;
 import com.github.goober.sonarqube.plugin.decorator.bitbucket.model.Annotation;
 import com.github.goober.sonarqube.plugin.decorator.bitbucket.model.CreateReportRequest;
 import com.github.goober.sonarqube.plugin.decorator.bitbucket.model.DataValue;
 import com.github.goober.sonarqube.plugin.decorator.bitbucket.model.ReportData;
+import com.github.goober.sonarqube.plugin.decorator.sonarqube.PullRequestReport;
+import com.github.goober.sonarqube.plugin.decorator.sonarqube.QualityCondition;
 import com.github.goober.sonarqube.plugin.decorator.sonarqube.model.Issue;
 import com.github.goober.sonarqube.plugin.decorator.sonarqube.model.Measure;
-import com.github.goober.sonarqube.plugin.decorator.sonarqube.model.MeasureResponse;
-import com.github.goober.sonarqube.plugin.decorator.sonarqube.model.Metric;
 import com.github.goober.sonarqube.plugin.decorator.sonarqube.model.Rating;
-import lombok.Getter;
-import org.sonar.api.ce.posttask.Analysis;
-import org.sonar.api.ce.posttask.Branch;
-import org.sonar.api.ce.posttask.PostProjectAnalysisTask;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 import org.sonar.api.ce.posttask.QualityGate;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
-import static java.util.stream.Collectors.toMap;
 
-@Getter
+@RequiredArgsConstructor
 class BitbucketPullRequestReport {
-    private static final String MISSING_PROPERTY = "Missing required property %s";
 
-    private final PostProjectAnalysisTask.ProjectAnalysis analysis;
-    private final String pullRequestId;
-    private final String project;
-    private final String repository;
-    private final String revision;
+    @NonNull
+    private final PullRequestReport report;
 
-    private String details;
-    private List<ReportData> data;
-    private Set<Annotation> annotations;
+    String getProject() {
+        return report.getRequiredProperty(BitbucketProperties.PROJECT.getKey());
+    }
 
-    BitbucketPullRequestReport(PostProjectAnalysisTask.ProjectAnalysis analysis) {
-        this.analysis = Optional.ofNullable(analysis)
-                .orElseThrow(() -> new IllegalArgumentException("analysis cannot be empty"));
+    String getRepository() {
+        return report.getRequiredProperty(BitbucketProperties.REPOSITORY.getKey());
+    }
 
-        this.pullRequestId = analysis.getBranch().flatMap(Branch::getName)
-                .orElseThrow(() -> new IllegalArgumentException(format(MISSING_PROPERTY, PullRequestProperties.KEY.getKey())));
-
-        this.project = Optional.ofNullable(analysis.getScannerContext().getProperties().get(BitbucketProperties.PROJECT.getKey()))
-                .orElseThrow(() -> new IllegalArgumentException(format(MISSING_PROPERTY, BitbucketProperties.PROJECT.getKey())));
-
-        this.repository = Optional.ofNullable(analysis.getScannerContext().getProperties().get(BitbucketProperties.REPOSITORY.getKey()))
-                .orElseThrow(() -> new IllegalArgumentException(format(MISSING_PROPERTY, BitbucketProperties.REPOSITORY)));
-
-        this.revision = analysis.getAnalysis()
-                .flatMap(Analysis::getRevision)
+    String getRevision() {
+        return report.getRevision()
                 .orElseThrow(() -> new IllegalArgumentException("Missing revision information"));
     }
 
     String getResult() {
-        return Optional.ofNullable(analysis.getQualityGate())
-                .map(QualityGate::getStatus)
+        return Optional.ofNullable(report.getStatus())
                 .map(this::asInsightStatus)
                 .orElse("PASS");
     }
 
-    Instant getCreatedDate() {
-        return analysis.getAnalysis()
-                .map(Analysis::getDate)
-                .map(Date::toInstant)
-                .orElse(Instant.now());
-    }
-
-    BitbucketPullRequestReport setReportDetails(Set<Metric> availableMetrics) {
-        String header = analysis.getQualityGate().getStatus().equals(QualityGate.Status.ERROR) ? "Quality Gate failed" : "Quality Gate passed";
+    String getReportDetails() {
+        String header = report.getStatus().equals(QualityGate.Status.ERROR) ? "Quality Gate failed" : "Quality Gate passed";
         String body = "";
-        if (analysis.getQualityGate().getStatus().equals(QualityGate.Status.ERROR)) {
-            Map<String, Metric> metrics = availableMetrics.stream()
-                    .collect(toMap(Metric::getKey, m -> m));
-
-            body = analysis.getQualityGate().getConditions().stream()
-                    .filter(c -> c.getStatus().equals(QualityGate.EvaluationStatus.ERROR))
-                    .map(c -> format("- %s %n", toString(c, metrics.get(c.getMetricKey()))))
+        if (report.getStatus().equals(QualityGate.Status.ERROR)) {
+            body = report.getQualityConditions().stream()
+                    .filter(c -> QualityGate.EvaluationStatus.ERROR.equals(c.getCondition().getStatus()))
+                    .map(c -> format("- %s %n", toString(c)))
                     .collect(Collectors.joining(""));
         }
-        this.details = format("%s%n%s", header, body);
-        return this;
+        return format("%s%n%s", header, body);
     }
 
-    BitbucketPullRequestReport setReportData(MeasureResponse response) {
+    List<ReportData> getReportData() {
         List<ReportData> reportData = new ArrayList<>();
-        if (response.hasMeasurements()) {
-            Map<String, Measure> measures = response.getMeasures();
+        if (report.hasMeasures()) {
             reportData.addAll(Arrays.asList(
                     ReportData.builder()
                             .title("Bugs")
-                            .value(new DataValue.Text(Optional.ofNullable(measures.get("new_bugs"))
+                            .value(new DataValue.Text(report.getMeasure("new_bugs")
                                     .flatMap(Measure::firstValue)
                                     .orElse("-")))
                             .build(),
                     ReportData.builder()
                             .title("Code Coverage")
-                            .value(Optional.ofNullable(measures.get("new_coverage"))
+                            .value(report.getMeasure("new_coverage")
                                     .flatMap(Measure::firstValue)
                                     .map(BigDecimal::new)
                                     .map(DataValue.Percentage::new)
@@ -115,13 +82,13 @@ class BitbucketPullRequestReport {
                             .build(),
                     ReportData.builder()
                             .title("Vulnerabilities")
-                            .value(new DataValue.Text(Optional.ofNullable(measures.get("new_vulnerabilities"))
+                            .value(new DataValue.Text(report.getMeasure("new_vulnerabilities")
                                     .flatMap(Measure::firstValue)
                                     .orElse("-")))
                             .build(),
                     ReportData.builder()
                             .title("Duplication")
-                            .value(Optional.ofNullable(measures.get("new_duplicated_lines_density"))
+                            .value(report.getMeasure("new_duplicated_lines_density")
                                     .flatMap(Measure::firstValue)
                                     .map(BigDecimal::new)
                                     .map(DataValue.Percentage::new)
@@ -130,7 +97,7 @@ class BitbucketPullRequestReport {
                             .build(),
                     ReportData.builder()
                             .title("Code Smells")
-                            .value(new DataValue.Text(Optional.ofNullable(measures.get("new_code_smells"))
+                            .value(new DataValue.Text(report.getMeasure("new_code_smells")
                                     .flatMap(Measure::firstValue)
                                     .orElse("-")))
                             .build()
@@ -140,11 +107,10 @@ class BitbucketPullRequestReport {
                 .title("Details")
                 .value(DataValue.Link.builder()
                         .linktext("Go to SonarQube")
-                        .href(response.getDashboardUrl())
+                        .href(report.getUrl())
                         .build())
                 .build());
-        this.data = reportData;
-        return this;
+        return reportData;
     }
 
     CreateReportRequest toCreateReportRequest() {
@@ -152,18 +118,17 @@ class BitbucketPullRequestReport {
                 .title("SonarQube")
                 .vendor("SonarQube")
                 .logoUrl("https://www.sonarqube.org/favicon-152.png")
-                .details(getDetails())
-                .data(getData())
+                .details(getReportDetails())
+                .data(getReportData())
                 .result(getResult())
-                .createdDate(getCreatedDate())
+                .createdDate(report.getCreationTimestamp())
                 .build();
     }
 
-    BitbucketPullRequestReport setAnnotations(Set<Issue> issues) {
-        this.annotations = issues.stream()
+    Set<Annotation> getAnnotations() {
+        return report.getIssues().stream()
                 .map(this::toAnnotation)
                 .collect(Collectors.toSet());
-        return this;
     }
 
     private Annotation toAnnotation(Issue issue) {
@@ -207,19 +172,19 @@ class BitbucketPullRequestReport {
         }
     }
 
-    private String toString(QualityGate.Condition condition, Metric metric) {
-        if (metric.getType().equals("RATING")) {
+    private String toString(QualityCondition condition) {
+        if (condition.getMetric().getType().equals("RATING")) {
             return format("%s %s (%s %s)",
-                    Rating.valueOf(Integer.parseInt(condition.getValue())),
-                    metric.getName(),
-                    condition.getOperator().equals(QualityGate.Operator.GREATER_THAN) ? "is worse than" : "is better than",
-                    Rating.valueOf(Integer.parseInt(condition.getErrorThreshold())));
+                    Rating.valueOf(Integer.parseInt(condition.getCondition().getValue())),
+                    condition.getMetric().getName(),
+                    condition.getCondition().getOperator().equals(QualityGate.Operator.GREATER_THAN) ? "is worse than" : "is better than",
+                    Rating.valueOf(Integer.parseInt(condition.getCondition().getErrorThreshold())));
         }
         return format("%s %s (%s %s)",
-                condition.getValue(),
-                metric.getName(),
-                condition.getOperator().equals(QualityGate.Operator.GREATER_THAN) ? "is greater than" : "is less than",
-                condition.getErrorThreshold());
+                condition.getCondition().getValue(),
+                condition.getMetric().getName(),
+                condition.getCondition().getOperator().equals(QualityGate.Operator.GREATER_THAN) ? "is greater than" : "is less than",
+                condition.getCondition().getErrorThreshold());
     }
 
     private String asInsightStatus(QualityGate.Status status) {

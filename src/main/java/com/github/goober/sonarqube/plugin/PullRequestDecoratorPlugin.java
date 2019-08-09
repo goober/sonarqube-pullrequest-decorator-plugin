@@ -22,11 +22,10 @@ import com.github.goober.sonarqube.plugin.decorator.bitbucket.BitbucketClient;
 import com.github.goober.sonarqube.plugin.decorator.bitbucket.BitbucketProperties;
 import com.github.goober.sonarqube.plugin.decorator.bitbucket.BitbucketPropertiesSensor;
 import com.github.goober.sonarqube.plugin.decorator.bitbucket.BitbucketPullRequestDecorator;
+import com.github.goober.sonarqube.plugin.decorator.sonarqube.PullRequestReportCollector;
 import com.github.goober.sonarqube.plugin.decorator.sonarqube.SonarQubeClient;
 import org.sonar.api.Plugin;
 import org.sonar.api.SonarQubeSide;
-import org.sonar.api.config.PropertyDefinition;
-import org.sonar.api.resources.Qualifiers;
 
 public class PullRequestDecoratorPlugin implements Plugin {
 
@@ -36,39 +35,11 @@ public class PullRequestDecoratorPlugin implements Plugin {
             context.addExtension(BitbucketPropertiesSensor.class);
         }
         if (SonarQubeSide.COMPUTE_ENGINE == context.getRuntime().getSonarQubeSide()) {
-            context.addExtensions(SonarQubeClient.class, BitbucketClient.class, BitbucketPullRequestDecorator.class);
+            context.addExtensions(PullRequestReportCollector.class, SonarQubeClient.class,
+                    BitbucketClient.class, BitbucketPullRequestDecorator.class);
         }
 
-        context.addExtensions(
-                PropertyDefinition.builder(BitbucketProperties.ENDPOINT.getKey())
-                        .index(0)
-                        .name("The URL of the Bitbucket Server")
-                        .description("This is the base URL for your Bitbucket Server instance")
-                        .onQualifiers(Qualifiers.PROJECT)
-                        .category("pullrequest").subCategory("bitbucket")
-                        .build(),
-                PropertyDefinition.builder(BitbucketProperties.TOKEN.getKey())
-                        .index(1)
-                        .name("Personal access token")
-                        .description("The personal access token of the user that will be used to decorate the pull requests")
-                        .onQualifiers(Qualifiers.PROJECT)
-                        .category("pullrequest").subCategory("bitbucket")
-                        .build(),
-                PropertyDefinition.builder(BitbucketProperties.PROJECT.getKey())
-                        .index(2)
-                        .name("Bitbucket Server project key")
-                        .description("You can find it in the Bitbucket Server repository URL")
-                        .onlyOnQualifiers(Qualifiers.PROJECT)
-                        .category("pullrequest").subCategory("bitbucket")
-                        .build(),
-                PropertyDefinition.builder(BitbucketProperties.REPOSITORY.getKey())
-                        .index(3)
-                        .name("Bitbucket Server repository slug")
-                        .description("You can find it in the Bitbucket Server repository URL")
-                        .onlyOnQualifiers(Qualifiers.PROJECT)
-                        .category("pullrequest").subCategory("bitbucket")
-                        .build());
-
+        context.addExtensions(BitbucketProperties.definitions());
     }
 
 }

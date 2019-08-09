@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.InjectableValues;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.goober.sonarqube.plugin.decorator.sonarqube.model.MeasureResponse;
 import com.github.goober.sonarqube.plugin.decorator.sonarqube.model.MetricsResponse;
-import com.github.goober.sonarqube.plugin.decorator.sonarqube.model.SearchResponse;
+import com.github.goober.sonarqube.plugin.decorator.sonarqube.model.SearchIssuesResponse;
 import lombok.RequiredArgsConstructor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -35,7 +35,7 @@ public class SonarQubeClient {
 
     private ObjectMapper objectMapper;
 
-    public SearchResponse listOpenIssues(String project, String pullRequestId) throws IOException {
+    public SearchIssuesResponse listOpenIssues(String project, String pullRequestId) throws IOException {
         Request request = new Request.Builder()
                 .url(String.format("%s/api/issues/search?projects=%s&pullRequest=%s", getLocalUrl(), project, pullRequestId))
                 .build();
@@ -44,7 +44,7 @@ public class SonarQubeClient {
             if (response.isSuccessful()) {
                 return objectMapper().reader(new InjectableValues.Std()
                         .addValue("baseUrl", server.getPublicRootUrl()))
-                        .forType(SearchResponse.class)
+                        .forType(SearchIssuesResponse.class)
                         .readValue(response.body().string());
             }
             LOGGER.error("{} - {}", response.code(), response.body() == null ? "" : response.body().string());
