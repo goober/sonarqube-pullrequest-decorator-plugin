@@ -7,10 +7,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.goober.sonarqube.plugin.decorator.sonarqube.model.MeasureResponse;
 import com.github.goober.sonarqube.plugin.decorator.sonarqube.model.MetricsResponse;
 import com.github.goober.sonarqube.plugin.decorator.sonarqube.model.SearchResponse;
+import lombok.RequiredArgsConstructor;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import org.sonar.api.ce.ComputeEngineSide;
+import org.sonar.api.config.Configuration;
 import org.sonar.api.platform.Server;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
@@ -21,23 +23,21 @@ import java.util.Optional;
 import static java.lang.String.format;
 
 @ComputeEngineSide
+@RequiredArgsConstructor
 public class SonarQubeClient {
 
     private static final Logger LOGGER = Loggers.get(SonarQubeClient.class);
 
     private final Server server;
+    private final Configuration configuration;
 
     private OkHttpClient client;
 
     private ObjectMapper objectMapper;
 
-    public SonarQubeClient(Server server) {
-        this.server = server;
-    }
-
     public SearchResponse listOpenIssues(String project, String pullRequestId) throws IOException {
         Request request = new Request.Builder()
-                .url(String.format("%s/api/issues/search?projects=%s&pullRequest=%s", server.getPublicRootUrl(), project, pullRequestId))
+                .url(String.format("%s/api/issues/search?projects=%s&pullRequest=%s", getLocalUrl(), project, pullRequestId))
                 .build();
 
         try (Response response = getClient().newCall(request).execute()) {
@@ -54,7 +54,7 @@ public class SonarQubeClient {
 
     public MetricsResponse listMetrics() throws IOException {
         Request request = new Request.Builder()
-                .url(String.format("%s/api/metrics/search?ps=500", server.getPublicRootUrl()))
+                .url(String.format("%s/api/metrics/search?ps=500", getLocalUrl()))
                 .build();
         try (Response response = getClient().newCall(request).execute()) {
             if (response.isSuccessful()) {
@@ -68,7 +68,7 @@ public class SonarQubeClient {
     public MeasureResponse listMeasures(String project, String pullRequestId, String... measures) throws IOException {
         Request request = new Request.Builder()
                 .url(String.format("%s/api/measures/component?component=%s&pullRequest=%s&metricKeys=%s",
-                        server.getPublicRootUrl(),
+                        getLocalUrl(),
                         project,
                         pullRequestId,
                         String.join(",", measures)))
@@ -87,6 +87,10 @@ public class SonarQubeClient {
 
     private String getDashboardUrl(String project, String pullRequestId) {
         return String.format("%s/dashboard?id=%s&pullRequest=%s", server.getPublicRootUrl(), project, pullRequestId);
+    }
+
+    private String getLocalUrl() {
+        return "http://localhost:" + configuration.get("sonar.web.port").orElse("9000") + server.getContextPath();
     }
 
     private OkHttpClient getClient() {
