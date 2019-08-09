@@ -3,6 +3,7 @@ package com.github.goober.sonarqube.plugin.decorator.bitbucket;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.goober.sonarqube.plugin.decorator.bitbucket.model.ServerProperties;
 import com.github.goober.sonarqube.plugin.decorator.bitbucket.model.CreateAnnotationsRequest;
 import com.github.goober.sonarqube.plugin.decorator.bitbucket.model.CreateReportRequest;
 import okhttp3.MediaType;
@@ -36,6 +37,19 @@ public class BitbucketClient {
     boolean isConfigured() {
         return configuration.hasKey(BitbucketProperties.ENDPOINT.getKey()) &&
                 configuration.hasKey(BitbucketProperties.TOKEN.getKey());
+    }
+
+    ServerProperties getServerProperties() throws IOException {
+        Request req = new Request.Builder()
+                .get()
+                .url(format("%s/rest/api/1.0/application-properties", baseUrl()))
+                .build();
+        try(Response response = getClient().newCall(req).execute()) {
+            validate(response);
+
+            return getObjectMapper().reader().forType(ServerProperties.class)
+                    .readValue(response.body().string());
+        }
     }
 
     void createReport(String project, String repository, String commit, CreateReportRequest request) throws IOException {

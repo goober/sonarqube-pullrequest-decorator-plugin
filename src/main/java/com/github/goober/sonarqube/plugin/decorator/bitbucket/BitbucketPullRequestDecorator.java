@@ -3,11 +3,13 @@ package com.github.goober.sonarqube.plugin.decorator.bitbucket;
 import com.github.goober.sonarqube.plugin.decorator.PullRequestDecorator;
 import com.github.goober.sonarqube.plugin.decorator.bitbucket.model.CreateAnnotationsRequest;
 import com.github.goober.sonarqube.plugin.decorator.sonarqube.SonarQubeClient;
+import com.github.goober.sonarqube.plugin.decorator.bitbucket.model.ServerProperties;
 import org.sonar.api.utils.log.Logger;
 import org.sonar.api.utils.log.Loggers;
 
 import java.io.IOException;
 
+import static java.lang.String.format;
 public class BitbucketPullRequestDecorator implements PullRequestDecorator {
 
     private static final Logger LOGGER = Loggers.get(BitbucketPullRequestDecorator.class);
@@ -22,7 +24,7 @@ public class BitbucketPullRequestDecorator implements PullRequestDecorator {
 
     @Override
     public boolean isActivated() {
-        return bitbucketClient.isConfigured();
+        return bitbucketClient.isConfigured() && hasApiSupport();
     }
 
     @Override
@@ -56,6 +58,21 @@ public class BitbucketPullRequestDecorator implements PullRequestDecorator {
 
         } catch (IOException e) {
             LOGGER.error("Could not decorate pull request {}, in project {}", report.getPullRequestId(), analysis.getProject().getKey(), e);
+    private boolean hasApiSupport() {
+        try {
+            ServerProperties server = bitbucketClient.getServerProperties();
+            LOGGER.debug(format("Your Bitbucket Server installation is version %s", server.getVersion()));
+            if (server.hasCodeInsightsApi()) {
+                return true;
+            } else {
+                LOGGER.info("Bitbucket Server version is to old. %s is the minimum version that supports code insights",
+                        ServerProperties.CODE_INSIGHT_VERSION);
+            }
+        } catch (IOException e) {
+            LOGGER.error("Could not determine Bitbucket Server version", e);
+            return false;
         }
+        return false;
     }
+
 }
