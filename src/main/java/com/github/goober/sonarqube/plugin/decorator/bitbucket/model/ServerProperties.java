@@ -3,24 +3,33 @@ package com.github.goober.sonarqube.plugin.decorator.bitbucket.model;
 import lombok.AllArgsConstructor;
 import lombok.Value;
 
-import static java.lang.String.format;
-
 @Value
 @AllArgsConstructor
 public class ServerProperties {
-    private static final int CODE_INSIGHT_MAJOR_VERSION = 5;
-    private static final int CODE_INSIGHT_MINOR_VERSION = 15;
-
-    public static String CODE_INSIGHT_VERSION = format("%d.%d",
-            CODE_INSIGHT_MAJOR_VERSION,
-            CODE_INSIGHT_MINOR_VERSION);
+    public static final String CODE_INSIGHT_VERSION = "5.15";
 
     String version;
 
     public boolean hasCodeInsightsApi() {
-        String[] semver = semver(version);
-        return Integer.parseInt(semver[0]) >= CODE_INSIGHT_MAJOR_VERSION &&
-                Integer.parseInt(semver[1]) >= CODE_INSIGHT_MINOR_VERSION;
+        return compareTo(CODE_INSIGHT_VERSION) >= 0;
+    }
+
+    private int compareTo(String other) {
+        String[] current = semver(version);
+        String[] minimum = semver(other);
+
+        int length = Math.max(current.length, minimum.length);
+        for(int i = 0; i < length; i++) {
+            int thisPart = i < current.length ?
+                    Integer.parseInt(current[i]) : 0;
+            int thatPart = i < minimum.length ?
+                    Integer.parseInt(minimum[i]) : 0;
+            if(thisPart < thatPart)
+                return -1;
+            if(thisPart > thatPart)
+                return 1;
+        }
+        return 0;
     }
 
     private String[] semver(String v) {
