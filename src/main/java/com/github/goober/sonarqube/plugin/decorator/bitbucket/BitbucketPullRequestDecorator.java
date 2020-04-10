@@ -57,8 +57,8 @@ public class BitbucketPullRequestDecorator implements PullRequestDecorator {
             if (server.hasCodeInsightsApi()) {
                 return true;
             } else {
-                LOGGER.info("Bitbucket Server version is to old. %s is the minimum version that supports code insights",
-                        ServerProperties.CODE_INSIGHT_VERSION);
+                LOGGER.info(format("Bitbucket Server version is to old. %s is the minimum version that supports code insights",
+                        ServerProperties.CODE_INSIGHT_VERSION));
             }
         } catch (IOException e) {
             LOGGER.error("Could not determine Bitbucket Server version", e);
