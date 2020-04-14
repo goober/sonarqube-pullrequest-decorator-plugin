@@ -28,6 +28,6 @@ public class Issue {
     }
 
     public String getPath() {
-        return getComponent().split(":")[1];
+        return component.substring(component.lastIndexOf(':') + 1);
     }
 }
