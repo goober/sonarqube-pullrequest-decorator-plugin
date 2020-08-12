@@ -1,3 +1,7 @@
+# Archived
+The functionality has been updated and merged into the original plugin and any
+issues you find should be opened against [sonarqube-community-branch-plugin](https://github.com/mc1arke/sonarqube-community-branch-plugin)
+
 # Sonarqube Pull Request Decorator Plugin
 A plugin for [SonarQube](https://sonarqube.org) to allow pull request decorations in the Community Edition.
 
